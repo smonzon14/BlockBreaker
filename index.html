@@ -31,6 +31,7 @@
     var playButton;
     var level = 1;
     var ballRadius = 7;
+    var overlayColor = "hsl(0,100%,35%)";
     function startGame() {
 
         game.start();
@@ -230,7 +231,15 @@
         ctx.font = "30px Arial";
         ctx.fillText(count, startPosX - 20, startPosY + 40);
     }
+    var counter = 0;
     function updateGameArea() {
+        var hue = (level * 5 + 80);
+        while(hue > 360){
+            hue -= 360;
+        }
+        overlayColor = "hsl("+hue+",100%,30%)";
+        counter += 1;
+        document.documentElement.style.backgroundColor = overlayColor;
         game.clear();
         drawEndLine();
         for (var i = 0; i < blocks.length; i += 1) {
@@ -276,7 +285,7 @@
                     this.deselect();
                 }
                 ctx = game.context;
-                ctx.fillStyle = "firebrick";
+                ctx.fillStyle = overlayColor;
                 ctx.fillRect(this.x, this.y, this.width, this.height);
                 ctx.fillStyle = this.color;
                 ctx.font = "30px Arial";
@@ -298,7 +307,7 @@
         ctx = game.context;
         ctx.beginPath();
         ctx.setLineDash([50, 5]);
-        ctx.strokeStyle = "firebrick";
+        ctx.strokeStyle = overlayColor;
         ctx.lineWidth = 1;
         ctx.moveTo(0, startPosY - endLineOffset);
         ctx.lineTo(canvasWidth, startPosY - endLineOffset);
@@ -314,7 +323,7 @@
         this.glow = 3;
         this.x = x;
         this.y = y;
-        this.maxY = 300;
+        this.maxY = 400;
         this.ball = new Ball(ballRadius, "yellow", x, y);
         this.contact = null;
         this.update = function(){
@@ -361,7 +370,7 @@
         this.glow = 3;
         this.x = x;
         this.y = y;
-        this.maxY = 300;
+        this.maxY = 400;
         this.radius = ballRadius + 2;
         this.contact = null;
         this.update = function(){
@@ -505,6 +514,10 @@
         this.color = 'hsl(' + this.health * 5 + 80 + ',100%,40%)';
         this.update = function () {
             if (this.health > 0) {
+                var hue = (this.health * 5 + 80);
+                while(hue > 360){
+                    hue -= 360;
+                }
                 this.color = 'hsl(' + (this.health * 5 + 80) + ',100%,40%)';
 
                 ctx = game.context;
