@@ -27,7 +27,7 @@
     var trajectoryDirection = 0;
     var mouseX;
     var mouseY;
-    var ballSpeed = 5;
+    var ballSpeed = 6;
     var blockSize = 34;
     var endLineOffset = 40;
     var gameOver;
@@ -127,18 +127,18 @@
         }
         for(var n = 0; n < blocksPerRow; n++){
 
-            if(Math.random() * 10 < (9 - 400/(level + 50))) {
+            if(Math.random() < 0.02){
+                powerups.push(new ExtraBall((n - 1) * (blockSize+5) + 67, 57))
+            }else if(Math.random() < (0.45/(-1*Math.pow(1.05,level))+0.6)) {
                 blocks.push(new Block(blockSize, (n - 1) * (blockSize+5) + 50, 40, Math.round(level + Math.random() * 3, 0)));
 
-            }else if(Math.random() < 0.02){
-                powerups.push(new ExtraBall((n - 1) * (blockSize+5) + 67, 57))
-            }else if(Math.random() < 0.02){
+            }else if(Math.random() < 0.01){
                 powerups.push(new PowerUp((n - 1) * (blockSize+5) + 67, 57))
             }
 
         }
 
-        level +=1;
+
     }
 
     function aim() {
@@ -196,7 +196,7 @@
             }
         }
         for(var b = 0; b < blocks.length; b++){
-            blocks[b].update();
+            //blocks[b].update();
             if(blocks[b].health < 1){
                 explosions.push(new Explosion(blocks[b].x, blocks[b].y, blocks[b].hue, blocks[b].sat));
                 blocks.splice(b, 1)
@@ -230,6 +230,8 @@
                         if(isGameOver()){
                             gameOver = true;
                             aiming = false;
+                        }else{
+                            level +=1;
                         }
                     }
                 }
@@ -255,6 +257,7 @@
         document.documentElement.style.backgroundColor = overlayColor;
         game.clear();
         drawEndLine();
+        displayLevel();
         for (var i = 0; i < blocks.length; i += 1) {
             blocks[i].update();
         }
@@ -275,6 +278,21 @@
         }
 
         drawScore();
+    }
+    function displayLevel(){
+        ctx = game.context;
+        ctx.fillStyle = "rgba(255,255,255,0.1)";
+
+        ctx.font = "300px Arial";
+        var sub;
+        if(String(level).length == 1){
+            sub = 90;
+        }else if (String(level).length == 2){
+            sub = 160;
+        }else{
+            sub = 240;
+        }
+        ctx.fillText(level, canvasWidth / 2 - sub, canvasHeight / 2);
     }
     function gameOverMessage(){
         ctx = game.context;
@@ -346,6 +364,7 @@
                 if (this.isTouchingBall()) {
                     this.ball.velX = this.contact.velY;
                     this.ball.velY = this.contact.velX;
+                    //this.ball.power = this.contact.power;
                     balls.push(this.ball);
                     this.ball = null;
                 }
@@ -429,7 +448,6 @@
         this.velY = 0;
         this.velX = 0;
         this.power = 1;
-        this.launched = false;
         this.left = this.x - this.radius;
         this.right = this.x + this.radius;
         this.top = this.y - this.radius;
@@ -478,8 +496,8 @@
                     this.y -= this.velY;
                     var dx = this.x - (blocks[b].x + blockSize/2);
                     var dy = blocks[b].y+blockSize/2 - this.y;
+                    var distance = Math.sqrt(dx * dx + dy * dy);
 
-                    console.log(dx +" " + dy);
                     if(Math.abs(dx) <= Math.abs(dy)){
 
                         this.velY *= -1;
@@ -495,10 +513,16 @@
             }
             if((this.x < 0 )||(this.x > canvasWidth)){
                 this.velX *= -1;
+                if(this.x < 0){
+                    this.x = 0;
+                }else{
+                    this.x = canvasWidth;
+                }
                 this.crashedWith = null;
             }
             if(this.y < 0) {
                 this.velY *= -1;
+                this.y = 0;
                 this.crashedWith = null;
             }else if(this.y > startPosY){
                 this.velX = 0;
@@ -549,7 +573,7 @@
         this.health = health;
         this.hue = (this.health * 5 + 80);
         this.sat = 100;
-        this.color = 'hsl(' + this.health * 5 + 80 + ',100%,40%)';
+        this.color = 'hsla(' + this.health * 5 + 80 + ',100%,50%, 0.7)';
 
         this.update = function () {
             if (this.health > 0) {
@@ -558,14 +582,22 @@
                     this.hue -= 360;
                 }
                 this.sat = Math.round((100/(-1 * Math.pow(Math.E, 0.1*(level-1)))+100),0);
-                this.color = 'hsl(' + (this.health * 5 + 80) + ','+this.sat+'%,40%)';
+                this.color = 'hsla(' + (this.health * 5 + 80) + ','+this.sat+'%,50%, 0.7)';
 
                 ctx = game.context;
                 ctx.fillStyle = this.color;
                 ctx.fillRect(this.x, this.y, this.width, this.height);
                 ctx.fillStyle = "white";
                 ctx.font = "18px Arial";
-                ctx.fillText(this.health, this.x+7, this.y + 23);
+                var sub;
+                if(String(this.health).length == 1){
+                    sub = 12;
+                }else if(String(this.health).length == 2){
+                    sub = 7;
+                }else{
+                    sub = 2;
+                }
+                ctx.fillText(this.health, this.x+sub, this.y + 23);
             }
 
         }
