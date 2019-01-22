@@ -7,11 +7,14 @@
     <link rel="stylesheet" type="text/css" href="main.css">
 </head>
 
+<!-- Good luck figuring out how to change your score ;) -->
+
 <body onload="startGame()">
 
 <script>
     var blocks;
     var balls;
+    var explosions;
     var powerups;
     var canvasWidth = 800;
     var canvasHeight = 800;
@@ -42,6 +45,7 @@
         blocks = [];
         balls = [];
         powerups = [];
+        explosions = [];
         level = 1;
         score = 0;
         playButton = new PlayButton(300, 400);
@@ -184,13 +188,21 @@
             t = endT - startT;
 
         }
+        for(var e = 0; e < explosions.length; e++){
+            explosions[e].update();
 
+            if(explosions[e].val < 0){
+                explosions.splice(e, 1)
+            }
+        }
         for(var b = 0; b < blocks.length; b++){
             blocks[b].update();
             if(blocks[b].health < 1){
+                explosions.push(new Explosion(blocks[b].x, blocks[b].y, blocks[b].hue, blocks[b].sat));
                 blocks.splice(b, 1)
             }
         }
+
         var ballsReturned = 0;
 
         for (var i = 0; i < balls.length; i++) {
@@ -233,11 +245,12 @@
     }
     var counter = 0;
     function updateGameArea() {
-        var hue = (level * 5 + 80);
+        var hue = (level * 5 + 80)
+        var sat = Math.round((100/(-1 * Math.pow(Math.E, 0.1*(level-1)))+100),0);
         while(hue > 360){
             hue -= 360;
         }
-        overlayColor = "hsl("+hue+",100%,30%)";
+        overlayColor = "hsl("+hue+","+sat+"%,30%)";
         counter += 1;
         document.documentElement.style.backgroundColor = overlayColor;
         game.clear();
@@ -323,12 +336,12 @@
         this.glow = 3;
         this.x = x;
         this.y = y;
-        this.maxY = 400;
+        this.maxY = 350;
         this.ball = new Ball(ballRadius, "yellow", x, y);
         this.contact = null;
         this.update = function(){
             if(this.ball != null && (this.y < this.maxY)) {
-
+                this.glow = 2 * (Math.cos(counter/10) + 1) + 2;
 
                 if (this.isTouchingBall()) {
                     this.ball.velX = this.contact.velY;
@@ -343,11 +356,11 @@
 
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, ballRadius + this.glow, 0, 2 * Math.PI, false);
-                    ctx.fillStyle = "rgba(150, 150, 0, "+((200-this.y)/200)+")";
+                    ctx.fillStyle = "rgba(150, 150, 0, "+((this.maxY-this.y)/this.maxY)+")";
                     ctx.fill();
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, ballRadius, 0, 2 * Math.PI, false);
-                    ctx.fillStyle = "rgba(255, 255, 0, "+((200-this.y)/200)+")";
+                    ctx.fillStyle = "rgba(255, 255, 0, "+((this.maxY-this.y)/this.maxY)+")";
                     ctx.fill();
                 }
             }
@@ -370,7 +383,7 @@
         this.glow = 3;
         this.x = x;
         this.y = y;
-        this.maxY = 400;
+        this.maxY = 350;
         this.radius = ballRadius + 2;
         this.contact = null;
         this.update = function(){
@@ -380,15 +393,16 @@
                     this.contact.power += 1;
 
                 }else{
+                    this.glow = (Math.sin(counter/10) + 1) + 3;
                     ctx = game.context;
 
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius + this.glow, 0, 2 * Math.PI, false);
-                    ctx.fillStyle = "rgba(150, 0, 150, "+((200-this.y)/200)+")";
+                    ctx.fillStyle = "rgba(150, 0, 150, "+((this.maxY-this.y)/this.maxY)+")";
                     ctx.fill();
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
-                    ctx.fillStyle = "rgba(255, 0, 255, "+((200-this.y)/200)+")";
+                    ctx.fillStyle = "rgba(255, 0, 255, "+((this.maxY-this.y)/this.maxY)+")";
                     ctx.fill();
                 }
             }
@@ -503,22 +517,48 @@
             ctx.fill();
         }
     }
+    function Explosion(x,y,hue,sat){
+        this.x = x;
+        this.y = y;
+        this.hue = hue;
+        this.sat = sat;
+        this.val = 40;
+        this.satstep = this.sat / this.val;
+        this.size = blockSize;
 
+        this.update = function(){
+            this.size += 3;
+            this.x -= 1.5;
+            this.y -= 1.5;
+            this.val -= 2;
+            this.sat -= this.satstep * 2;
+            if(this.val >= 0 && this.sat >= 0){
+
+                ctx = game.context;
+                ctx.fillStyle = "hsl("+Math.round(this.hue)+", "+Math.round(this.sat)+"%, "+Math.round(this.val)+"%)";
+                ctx.fillRect(this.x, this.y, Math.round(this.size,0), Math.round(this.size,0));
+
+            }
+        }
+    }
     function Block(size, x, y, health = 20) {
         this.width = size;
         this.height = size;
         this.x = x;
         this.y = y;
         this.health = health;
-
+        this.hue = (this.health * 5 + 80);
+        this.sat = 100;
         this.color = 'hsl(' + this.health * 5 + 80 + ',100%,40%)';
+
         this.update = function () {
             if (this.health > 0) {
-                var hue = (this.health * 5 + 80);
-                while(hue > 360){
-                    hue -= 360;
+                this.hue = (this.health * 5 + 80);
+                while(this.hue > 360){
+                    this.hue -= 360;
                 }
-                this.color = 'hsl(' + (this.health * 5 + 80) + ',100%,40%)';
+                this.sat = Math.round((100/(-1 * Math.pow(Math.E, 0.1*(level-1)))+100),0);
+                this.color = 'hsl(' + (this.health * 5 + 80) + ','+this.sat+'%,40%)';
 
                 ctx = game.context;
                 ctx.fillStyle = this.color;
@@ -531,5 +571,6 @@
         }
     }
 </script>
+<footer style="position:absolute;bottom:10px;font-family: Arial;color:white;">yellow = new ball<br>purple = power +1</footer>
 </body>
 </html>
