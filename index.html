@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Block Breaker</title>
+    <link rel="stylesheet" type="text/css" href="main.css">
+</head>
+
+<body onload="startGame()">
+
+<script>
+    var blocks;
+    var balls;
+    var powerups;
+    var canvasWidth = 800;
+    var canvasHeight = 800;
+    var blocksPerRow = 20;
+    var startPosX = canvasWidth / 2;
+    var startPosY = canvasHeight - 60;
+    var aiming;
+    var shooting;
+    var score = 0;
+    var trajectoryDirection = 0;
+    var mouseX;
+    var mouseY;
+    var ballSpeed = 5;
+    var blockSize = 34;
+    var endLineOffset = 40;
+    var gameOver;
+    var playButton;
+    var level = 1;
+    var ballRadius = 7;
+    function startGame() {
+
+        game.start();
+        game.clear();
+        gameOver = false;
+        aiming = true;
+        shooting = false;
+        blocks = [];
+        balls = [];
+        powerups = [];
+        level = 1;
+        score = 0;
+        playButton = new PlayButton(300, 400);
+        game.canvas.onclick = function(){
+            if(aiming){
+                if(startPosY - mouseY > endLineOffset) {
+                    aiming = false;
+                    shooting = true;
+                    trajectoryDirection = Math.atan((startPosY - mouseY) / (mouseX - startPosX));
+                }
+            }
+            if(gameOver){
+                if(playButton.hovered()){
+                    startGame();
+                }
+            }
+        };
+        for(var i = 0; i < 3; i++) {
+            balls.push(new Ball(ballRadius, "yellow", startPosX, startPosY));
+        }
+        generateBlocksAndPowerups();
+
+    }
+
+    var game = {
+        canvas: document.createElement("canvas"),
+        start: function () {
+            this.canvas.id = "gameField";
+            this.canvas.width = canvasWidth;
+            this.canvas.height = canvasHeight;
+            this.context = this.canvas.getContext("2d");
+            if(this.interval == null) {
+                this.interval = setInterval(updateGameArea, 0.1);
+            }
+            document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+            document.getElementById("gameField").onmousemove = findScreenCoords;
+        }, clear: function () {
+            ctx = this.context;
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+    }
+    function findScreenCoords(mouseEvent) {
+        var obj = document.getElementById("gameField");
+        var obj_left = 0;
+        var obj_top = 0;
+
+        while (obj.offsetParent)
+        {
+            obj_left += obj.offsetLeft;
+            obj_top += obj.offsetTop;
+            obj = obj.offsetParent;
+        }
+        if (mouseEvent)
+        {
+            //FireFox
+            mouseX = mouseEvent.pageX;
+            mouseY = mouseEvent.pageY;
+        }
+        else
+        {
+            //IE
+            mouseX = window.event.x + document.body.scrollLeft - 2;
+            mouseY = window.event.y + document.body.scrollTop - 2;
+        }
+        mouseX -= obj_left;
+        mouseY -= obj_top;
+    }
+    function generateBlocksAndPowerups(){
+        for(var b = 0; b < blocks.length; b++){
+
+            blocks[b].y += blockSize + 5;
+
+        }
+        for(var p = 0; p < powerups.length; p++){
+
+            powerups[p].y += blockSize + 5;
+
+        }
+        for(var n = 0; n < blocksPerRow; n++){
+
+            if(Math.random() * 10 < (9 - 400/(level + 50))) {
+                blocks.push(new Block(blockSize, (n - 1) * (blockSize+5) + 50, 40, Math.round(level + Math.random() * 3, 0)));
+
+            }else if(Math.random() < 0.02){
+                powerups.push(new ExtraBall((n - 1) * (blockSize+5) + 67, 57))
+            }else if(Math.random() < 0.02){
+                powerups.push(new PowerUp((n - 1) * (blockSize+5) + 67, 57))
+            }
+
+        }
+
+        level +=1;
+    }
+
+    function aim() {
+
+        if(startPosY - mouseY > endLineOffset) {
+            ctx = game.context;
+
+            ctx.beginPath();
+            ctx.setLineDash([3, 15]);
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 3;
+            ctx.moveTo(startPosX, startPosY);
+            ctx.lineTo(mouseX, mouseY);
+            ctx.stroke();
+
+        }
+        balls[0].update();
+
+    }
+    function isGameOver(){
+        for(var b = 0; b < blocks.length; b++){
+            if(blocks[b].y > startPosY - endLineOffset){
+                return true;
+            }
+        }
+        return false;
+    }
+    var shot = 0;
+    var triggerDelay = 100;
+    var t = triggerDelay;
+    var startT = new Date();
+    var endT = new Date();
+    var firstContact = true;
+
+    function shoot() {
+
+        if (shot < balls.length) {
+            if (t > triggerDelay) {
+
+                startT = new Date();
+                endT = startT;
+                balls[shot].setVelocity(ballSpeed * Math.cos(trajectoryDirection), ballSpeed * Math.sin(trajectoryDirection));
+
+                shot += 1;
+            }
+            endT = new Date();
+            t = endT - startT;
+
+        }
+
+        for(var b = 0; b < blocks.length; b++){
+            blocks[b].update();
+            if(blocks[b].health < 1){
+                blocks.splice(b, 1)
+            }
+        }
+        var ballsReturned = 0;
+
+        for (var i = 0; i < balls.length; i++) {
+            balls[i].update();
+
+            if (shot == balls.length) {
+
+                if (balls[i].y === startPosY) {
+                    ballsReturned += 1;
+
+                    if((ballsReturned == 1) && firstContact){
+                        firstContact = false;
+                        startPosX = balls[i].x;
+                    }
+                    balls[i].x = startPosX;
+
+                    if (ballsReturned == balls.length) {
+                        aiming = true;
+                        shooting = false;
+                        shot = 0;
+                        firstContact = true;
+                        generateBlocksAndPowerups();
+
+
+                        if(isGameOver()){
+                            gameOver = true;
+                            aiming = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    function displayBallCount(){
+        var count = balls.length - shot;
+        ctx = game.context;
+        ctx.fillStyle = "white";
+        ctx.font = "30px Arial";
+        ctx.fillText(count, startPosX - 20, startPosY + 40);
+    }
+    function updateGameArea() {
+        game.clear();
+        drawEndLine();
+        for (var i = 0; i < blocks.length; i += 1) {
+            blocks[i].update();
+        }
+        for (var i = 0; i < powerups.length; i += 1){
+            powerups[i].update();
+        }
+        displayBallCount();
+        if(aiming) {
+
+            aim();
+        }else if(shooting){
+
+            shoot();
+        }else if(gameOver){
+
+            gameOverMessage();
+            playButton.update();
+        }
+
+        drawScore();
+    }
+    function gameOverMessage(){
+        ctx = game.context;
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+        ctx.fillStyle = "white";
+        ctx.font = "60px Arial";
+        ctx.fillText("GAME OVER", 230, 300);
+
+    }
+    function PlayButton(x,y){
+        this.x = x;
+        this.y = y;
+        this.width = 200;
+        this.height = 50;
+        this.color = "red";
+
+        this.update = function () {
+            if(gameOver) {
+                if(!this.hovered()){
+                    this.deselect();
+                }
+                ctx = game.context;
+                ctx.fillStyle = "firebrick";
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = this.color;
+                ctx.font = "30px Arial";
+                ctx.fillText("PLAY AGAIN", this.x+10, this.y + 33);
+            }
+        }
+        this.hovered = function () {
+            if (mouseX < this.x + this.width && mouseX > this.x && mouseY < this.y + this.height && mouseY > this.y) {
+                this.color = "black";
+                return true;
+            }
+            return false;
+        }
+        this.deselect = function () {
+            this.color = "white";
+        }
+    }
+    function drawEndLine(){
+        ctx = game.context;
+        ctx.beginPath();
+        ctx.setLineDash([50, 5]);
+        ctx.strokeStyle = "firebrick";
+        ctx.lineWidth = 1;
+        ctx.moveTo(0, startPosY - endLineOffset);
+        ctx.lineTo(canvasWidth, startPosY - endLineOffset);
+        ctx.stroke();
+    }
+    function drawScore() {
+        ctx = game.context;
+        ctx.fillStyle = "white";
+        ctx.font = "25px Arial";
+        ctx.fillText("Score: " + score, 20, canvasHeight - 110);
+    }
+    function ExtraBall(x,y){
+        this.glow = 3;
+        this.x = x;
+        this.y = y;
+        this.maxY = 300;
+        this.ball = new Ball(ballRadius, "yellow", x, y);
+        this.contact = null;
+        this.update = function(){
+            if(this.ball != null && (this.y < this.maxY)) {
+
+
+                if (this.isTouchingBall()) {
+                    this.ball.velX = this.contact.velY;
+                    this.ball.velY = this.contact.velX;
+                    balls.push(this.ball);
+                    this.ball = null;
+                }
+                if(this.ball != null){
+                    this.ball.x = this.x;
+                    this.ball.y = this.y;
+                    ctx = game.context;
+
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, ballRadius + this.glow, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = "rgba(150, 150, 0, "+((200-this.y)/200)+")";
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, ballRadius, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = "rgba(255, 255, 0, "+((200-this.y)/200)+")";
+                    ctx.fill();
+                }
+            }
+
+        }
+        this.isTouchingBall = function(){
+
+            for(var b = 0; b < balls.length; b++){
+                var dx = balls[b].x - this.x;
+                var dy = balls[b].y - this.y;
+                var distance = Math.pow(dx,2) + Math.pow(dy,2);
+                if(distance <= Math.pow(2*ballRadius+this.glow,2)){
+                    this.contact = balls[b];
+                    return true;
+                }
+            }
+        }
+    }
+    function PowerUp(x,y){
+        this.glow = 3;
+        this.x = x;
+        this.y = y;
+        this.maxY = 300;
+        this.radius = ballRadius + 2;
+        this.contact = null;
+        this.update = function(){
+            if(this.contact == null && (this.y < this.maxY)) {
+
+                if(this.isTouchingBall()){
+                    this.contact.power += 1;
+
+                }else{
+                    ctx = game.context;
+
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + this.glow, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = "rgba(150, 0, 150, "+((200-this.y)/200)+")";
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
+                    ctx.fillStyle = "rgba(255, 0, 255, "+((200-this.y)/200)+")";
+                    ctx.fill();
+                }
+            }
+
+        }
+        this.isTouchingBall = function(){
+
+            for(var b = 0; b < balls.length; b++){
+                var dx = balls[b].x - this.x;
+                var dy = balls[b].y - this.y;
+                var distance = Math.pow(dx,2) + Math.pow(dy,2);
+                if(distance <= Math.pow(ballRadius+this.radius+this.glow,2)){
+                    this.contact = balls[b];
+                    return true;
+                }
+            }
+        }
+    }
+    function Ball(radius, color, x, y) {
+        this.radius = radius;
+        this.color = color;
+        this.x = x;
+        this.y = y;
+        this.velY = 0;
+        this.velX = 0;
+        this.power = 1;
+        this.launched = false;
+        this.left = this.x - this.radius;
+        this.right = this.x + this.radius;
+        this.top = this.y - this.radius;
+        this.bottom = this.y + this.radius;
+        this.crashedWith = null;
+        this.crashWith = function (otherobj) {
+            if(this.crashedWith != otherobj) {
+                this.left = this.x - this.radius;
+                this.right = this.x + this.radius;
+                this.top = this.y - this.radius;
+                this.bottom = this.y + this.radius;
+                var otherleft = otherobj.x;
+                var otherright = otherobj.x + (otherobj.width);
+                var othertop = otherobj.y;
+                var otherbottom = otherobj.y + (otherobj.height);
+                var crash = true;
+                if ((this.bottom < othertop) || (this.top > otherbottom) || (this.right < otherleft) || (this.left > otherright)) {
+                    crash = false;
+                }
+                if (crash == true) {
+                    otherobj.health -= this.power;
+                    this.crashedWith = otherobj;
+                    score += this.power;
+
+                }
+                return crash;
+            }
+        }
+        this.setVelocity = function(x,y){
+            this.velX = x;
+            this.velY = y;
+            if(this.velY > 0){
+                this.velY *= -1;
+            }else{
+                this.velX *= -1;
+            }
+        }
+        this.update = function () {
+
+            this.x += this.velX;
+            this.y += this.velY;
+            for(var b = 0; b < blocks.length; b++){
+
+                if(this.crashWith(blocks[b])){
+                    this.x -= this.velX;
+                    this.y -= this.velY;
+                    var dx = this.x - (blocks[b].x + blockSize/2);
+                    var dy = blocks[b].y+blockSize/2 - this.y;
+
+                    console.log(dx +" " + dy);
+                    if(Math.abs(dx) <= Math.abs(dy)){
+
+                        this.velY *= -1;
+                    }
+                    if(Math.abs(dx) > Math.abs(dy)){
+                        this.velX *= -1;
+
+
+                    }
+
+                }
+
+            }
+            if((this.x < 0 )||(this.x > canvasWidth)){
+                this.velX *= -1;
+                this.crashedWith = null;
+            }
+            if(this.y < 0) {
+                this.velY *= -1;
+                this.crashedWith = null;
+            }else if(this.y > startPosY){
+                this.velX = 0;
+                this.velY = 0;
+                this.x = startPosX;
+                this.y = startPosY;
+                this.crashedWith = null;
+            }
+
+            ctx = game.context;
+
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
+            this.color = "rgb(255, " + (255 / (this.power/2 + 0.5)) + ", 0)";
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        }
+    }
+
+    function Block(size, x, y, health = 20) {
+        this.width = size;
+        this.height = size;
+        this.x = x;
+        this.y = y;
+        this.health = health;
+
+        this.color = 'hsl(' + this.health * 5 + 80 + ',100%,40%)';
+        this.update = function () {
+            if (this.health > 0) {
+                this.color = 'hsl(' + (this.health * 5 + 80) + ',100%,40%)';
+
+                ctx = game.context;
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = "white";
+                ctx.font = "18px Arial";
+                ctx.fillText(this.health, this.x+7, this.y + 23);
+            }
+
+        }
+    }
+</script>
+</body>
+</html>
