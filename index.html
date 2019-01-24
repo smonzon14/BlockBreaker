@@ -27,7 +27,7 @@
     var trajectoryDirection = 0;
     var mouseX;
     var mouseY;
-    var ballSpeed = 6;
+    var ballSpeed = 3;
     var blockSize = 34;
     var endLineOffset = 40;
     var gameOver;
@@ -492,21 +492,26 @@
             for(var b = 0; b < blocks.length; b++){
 
                 if(this.crashWith(blocks[b])){
+
+
+                    var nearestX = Math.max(blocks[b].x, Math.min(this.x, blocks[b].x + blockSize));
+                    var nearestY = Math.max(blocks[b].y, Math.min(this.y, blocks[b].y + blockSize));
+                    var dx = (this.x - nearestX)/10;
+                    var dy = (this.y - nearestY)/10;
+                    //var distance = dx * dx + dy * dy;
                     this.x -= this.velX;
-                    this.y -= this.velY;
-                    var dx = this.x - (blocks[b].x + blockSize/2);
-                    var dy = blocks[b].y+blockSize/2 - this.y;
-                    var distance = Math.sqrt(dx * dx + dy * dy);
-
-                    if(Math.abs(dx) <= Math.abs(dy)){
-
-                        this.velY *= -1;
+                    this.y -= this.velY; //What if dy or dx is 0?
+                    this.velY += dy;
+                    this.velX += dx;
+                    while(this.velX * this.velX + this.velY * this.velY < ballSpeed * ballSpeed){
+                        this.velY += dy;
+                        this.velX += dx;
                     }
-                    if(Math.abs(dx) > Math.abs(dy)){
-                        this.velX *= -1;
-
-
+                    if(this.velY < 1.7){
+                        this.velY = Math.sign(this.velY) * ballSpeed * 0.17;
+                        this.velX = ballSpeed * 0.98544;
                     }
+
 
                 }
 
