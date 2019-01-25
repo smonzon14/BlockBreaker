@@ -27,7 +27,9 @@
     var trajectoryDirection = 0;
     var mouseX;
     var mouseY;
-    var ballSpeed = 3;
+    var maxBallSpeed = 6;
+    var minBallSpeed = 4.5;
+    var ballSpeed = minBallSpeed;
     var blockSize = 34;
     var endLineOffset = 40;
     var gameOver;
@@ -63,7 +65,7 @@
                 }
             }
         };
-        for(var i = 0; i < 3; i++) {
+        for(var i = 0; i < 5; i++) {
             balls.push(new Ball(ballRadius, "yellow", startPosX, startPosY));
         }
         generateBlocksAndPowerups();
@@ -83,15 +85,15 @@
             document.body.insertBefore(this.canvas, document.body.childNodes[0]);
             document.getElementById("gameField").onmousemove = findScreenCoords;
         }, clear: function () {
-            ctx = this.context;
+            const ctx = this.context;
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         }
-    }
+    };
     function findScreenCoords(mouseEvent) {
-        var obj = document.getElementById("gameField");
-        var obj_left = 0;
-        var obj_top = 0;
+        let obj = document.getElementById("gameField");
+        let obj_left = 0;
+        let obj_top = 0;
 
         while (obj.offsetParent)
         {
@@ -115,36 +117,50 @@
         mouseY -= obj_top;
     }
     function generateBlocksAndPowerups(){
-        for(var b = 0; b < blocks.length; b++){
+        for(let b = 0; b < blocks.length; b++){
 
             blocks[b].y += blockSize + 5;
 
         }
-        for(var p = 0; p < powerups.length; p++){
+        for(let p = 0; p < powerups.length; p++){
 
             powerups[p].y += blockSize + 5;
 
         }
-        for(var n = 0; n < blocksPerRow; n++){
+        var nb = 0;
+        for(let n = 0; n < blocksPerRow; n++){
 
-            if(Math.random() < 0.02){
+            if(Math.random() < 0.03){
                 powerups.push(new ExtraBall((n - 1) * (blockSize+5) + 67, 57))
             }else if(Math.random() < (0.45/(-1*Math.pow(1.05,level))+0.6)) {
-                blocks.push(new Block(blockSize, (n - 1) * (blockSize+5) + 50, 40, Math.round(level + Math.random() * 3, 0)));
+                nb++;
+                blocks.push(new Block(blockSize, (n - 1) * (blockSize+5) + 50, 40, randomHealth()));
 
             }else if(Math.random() < 0.01){
                 powerups.push(new PowerUp((n - 1) * (blockSize+5) + 67, 57))
             }
 
         }
-
+        if(nb === 0){
+            blocks.push(new Block(blockSize, (Math.round(Math.random()) * (blocksPerRow-1) - 1) * (blockSize+5) + 50, 40, randomHealth()));
+        }
 
     }
-
+    function randomHealth(){
+        var health = Math.round(level + (Math.random() - 0.5) * 4);
+        if(Math.random() > 0.95){
+            health = Math.round(level + (Math.random()/3 + 2) * 15);
+        }
+        if(health < 1){
+            health = 1;
+        }
+        return health;
+    }
     function aim() {
 
-        if(startPosY - mouseY > endLineOffset) {
-            ctx = game.context;
+
+        if (startPosY - mouseY > endLineOffset) {
+            const ctx = game.context;
 
             ctx.beginPath();
             ctx.setLineDash([3, 15]);
@@ -159,7 +175,7 @@
 
     }
     function isGameOver(){
-        for(var b = 0; b < blocks.length; b++){
+        for(let b = 0; b < blocks.length; b++){
             if(blocks[b].y > startPosY - endLineOffset){
                 return true;
             }
@@ -172,9 +188,15 @@
     var startT = new Date();
     var endT = new Date();
     var firstContact = true;
-
+    var shotStartTime;
     function shoot() {
-
+        if(shot === 0){
+            shotStartTime = new Date();
+        }else if(((new Date()) - shotStartTime) > 5000){
+            ballSpeed = maxBallSpeed;
+        }else if(ballSpeed !== minBallSpeed){
+            ballSpeed = minBallSpeed;
+        }
         if (shot < balls.length) {
             if (t > triggerDelay) {
 
@@ -191,7 +213,7 @@
         for(var e = 0; e < explosions.length; e++){
             explosions[e].update();
 
-            if(explosions[e].val < 0){
+            if(explosions[e].alpha < 0){
                 explosions.splice(e, 1)
             }
         }
@@ -208,18 +230,20 @@
         for (var i = 0; i < balls.length; i++) {
             balls[i].update();
 
-            if (shot == balls.length) {
+            if (shot === balls.length) {
 
-                if (balls[i].y === startPosY) {
-                    ballsReturned += 1;
-
-                    if((ballsReturned == 1) && firstContact){
+                if(balls[i].y >= startPosY){
+                    if((ballsReturned === 0 ) && firstContact){
                         firstContact = false;
                         startPosX = balls[i].x;
                     }
-                    balls[i].x = startPosX;
 
-                    if (ballsReturned == balls.length) {
+                    if(balls[i].x === startPosX){
+                        ballsReturned += 1;
+                    }
+
+
+                    if (ballsReturned === balls.length) {
                         aiming = true;
                         shooting = false;
                         shot = 0;
@@ -247,7 +271,7 @@
     }
     var counter = 0;
     function updateGameArea() {
-        var hue = (level * 5 + 80)
+        var hue = (level * 5 + 80);
         var sat = Math.round((100/(-1 * Math.pow(Math.E, 0.1*(level-1)))+100),0);
         while(hue > 360){
             hue -= 360;
@@ -359,7 +383,7 @@
         this.contact = null;
         this.update = function(){
             if(this.ball != null && (this.y < this.maxY)) {
-                this.glow = 2 * (Math.cos(counter/10) + 1) + 2;
+                this.glow = (Math.cos(counter/10) + 1) + 3;
 
                 if (this.isTouchingBall()) {
                     this.ball.velX = this.contact.velY;
@@ -412,7 +436,7 @@
                     this.contact.power += 1;
 
                 }else{
-                    this.glow = (Math.sin(counter/10) + 1) + 3;
+                    this.glow = (Math.sin(counter/20) + 1) + 3;
                     ctx = game.context;
 
                     ctx.beginPath();
@@ -453,6 +477,7 @@
         this.top = this.y - this.radius;
         this.bottom = this.y + this.radius;
         this.crashedWith = null;
+        this.lastSpeed = ballSpeed;
         this.crashWith = function (otherobj) {
             if(this.crashedWith != otherobj) {
                 this.left = this.x - this.radius;
@@ -468,15 +493,15 @@
                     crash = false;
                 }
                 if (crash == true) {
-                    otherobj.health -= this.power;
+
                     this.crashedWith = otherobj;
                     score += this.power;
 
                 }
                 return crash;
             }
-        }
-        this.setVelocity = function(x,y){
+        };
+        this.setVelocity = function(x, y){
             this.velX = x;
             this.velY = y;
             if(this.velY > 0){
@@ -484,33 +509,44 @@
             }else{
                 this.velX *= -1;
             }
-        }
-        this.update = function () {
+        };
 
+        this.update = function () {
+            if(this.lastSpeed !== ballSpeed){
+                this.velY *= ballSpeed / this.lastSpeed;
+                this.velX *= ballSpeed / this.lastSpeed;
+                this.lastSpeed = ballSpeed;
+            }
             this.x += this.velX;
             this.y += this.velY;
-            for(var b = 0; b < blocks.length; b++){
+            for(let b = 0; b < blocks.length; b++){
 
                 if(this.crashWith(blocks[b])){
+                    var dx = 0;
+                    var dy = 0;
+                    while(this.crashWith(blocks[b])){
+                        this.x -= this.velX;
+                        this.y -= this.velY;
+                    }
+                    nearestX = Math.max(blocks[b].x, Math.min(this.x, blocks[b].x + blockSize));
+                    nearestY = Math.max(blocks[b].y, Math.min(this.y, blocks[b].y + blockSize));
+                    dx = (this.x - nearestX)/100;
+                    dy = (this.y - nearestY)/100;
 
 
-                    var nearestX = Math.max(blocks[b].x, Math.min(this.x, blocks[b].x + blockSize));
-                    var nearestY = Math.max(blocks[b].y, Math.min(this.y, blocks[b].y + blockSize));
-                    var dx = (this.x - nearestX)/10;
-                    var dy = (this.y - nearestY)/10;
-                    //var distance = dx * dx + dy * dy;
-                    this.x -= this.velX;
-                    this.y -= this.velY; //What if dy or dx is 0?
+
                     this.velY += dy;
                     this.velX += dx;
+
                     while(this.velX * this.velX + this.velY * this.velY < ballSpeed * ballSpeed){
                         this.velY += dy;
                         this.velX += dx;
                     }
-                    if(this.velY < 1.7){
-                        this.velY = Math.sign(this.velY) * ballSpeed * 0.17;
-                        this.velX = ballSpeed * 0.98544;
+                    if(Math.abs(this.velY) < ballSpeed * 0.0871557){
+                        this.velY = ballSpeed * 0.0871557 * Math.sign(this.velY);
+                        this.velX = ballSpeed * 0.9961947 * Math.sign(this.velX);
                     }
+                    blocks[b].health -= this.power;
 
 
                 }
@@ -530,11 +566,16 @@
                 this.y = 0;
                 this.crashedWith = null;
             }else if(this.y > startPosY){
-                this.velX = 0;
-                this.velY = 0;
+                var dy = startPosY - this.y;
+                var dx = startPosX - this.x;
+                this.velX = dx/20;
+                this.velY = dy/20;
+
+                this.crashedWith = null;
+            }
+            if(Math.pow(startPosX - this.x, 2) + Math.pow(startPosY - this.y, 2) < 4){
                 this.x = startPosX;
                 this.y = startPosY;
-                this.crashedWith = null;
             }
 
             ctx = game.context;
@@ -549,25 +590,31 @@
     function Explosion(x,y,hue,sat){
         this.x = x;
         this.y = y;
-        this.hue = hue;
+        this.hue = Math.round(Math.random() * 360);
         this.sat = sat;
-        this.val = 40;
-        this.satstep = this.sat / this.val;
+        this.alpha = 1.0;
         this.size = blockSize;
-
+        this.growth = 1;
         this.update = function(){
-            this.size += 3;
-            this.x -= 1.5;
-            this.y -= 1.5;
-            this.val -= 2;
-            this.sat -= this.satstep * 2;
-            if(this.val >= 0 && this.sat >= 0){
+            this.size += 2 * this.growth;
+            this.x -= this.growth;
+            this.y -= this.growth;
+            this.alpha -= 0.025;
+
+            if(this.alpha >= 0 && this.sat >= 0){
 
                 ctx = game.context;
-                ctx.fillStyle = "hsl("+Math.round(this.hue)+", "+Math.round(this.sat)+"%, "+Math.round(this.val)+"%)";
-                ctx.fillRect(this.x, this.y, Math.round(this.size,0), Math.round(this.size,0));
+                ctx.save();
+                ctx.beginPath();
+                ctx.translate(this.x+this.size/2, this.y+this.size/2);
+                ctx.rotate(this.alpha * Math.PI);
+                ctx.fillStyle = "hsla("+Math.round(this.hue)+", "+Math.round(this.sat)+"%, "+"40%,"+this.alpha+")";
+
+                ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
+                ctx.restore();
 
             }
+
         }
     }
     function Block(size, x, y, health = 20) {
@@ -578,7 +625,7 @@
         this.health = health;
         this.hue = (this.health * 5 + 80);
         this.sat = 100;
-        this.color = 'hsla(' + this.health * 5 + 80 + ',100%,50%, 0.7)';
+
 
         this.update = function () {
             if (this.health > 0) {
@@ -586,12 +633,14 @@
                 while(this.hue > 360){
                     this.hue -= 360;
                 }
-                this.sat = Math.round((100/(-1 * Math.pow(Math.E, 0.1*(level-1)))+100),0);
+                this.sat = Math.round((100/(-1 * Math.pow(Math.E, 0.1*(level-1)))+100));
                 this.color = 'hsla(' + (this.health * 5 + 80) + ','+this.sat+'%,50%, 0.7)';
 
                 ctx = game.context;
                 ctx.fillStyle = this.color;
+
                 ctx.fillRect(this.x, this.y, this.width, this.height);
+
                 ctx.fillStyle = "white";
                 ctx.font = "18px Arial";
                 var sub;
