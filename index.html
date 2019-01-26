@@ -27,8 +27,8 @@
     var trajectoryDirection = 0;
     var mouseX;
     var mouseY;
-    var maxBallSpeed = 6;
-    var minBallSpeed = 4.5;
+    var maxBallSpeed = 5;
+    var minBallSpeed = 4;
     var ballSpeed = minBallSpeed;
     var blockSize = 34;
     var endLineOffset = 40;
@@ -476,30 +476,30 @@
         this.right = this.x + this.radius;
         this.top = this.y - this.radius;
         this.bottom = this.y + this.radius;
-        this.crashedWith = null;
+
         this.lastSpeed = ballSpeed;
         this.crashWith = function (otherobj) {
-            if(this.crashedWith != otherobj) {
-                this.left = this.x - this.radius;
-                this.right = this.x + this.radius;
-                this.top = this.y - this.radius;
-                this.bottom = this.y + this.radius;
-                var otherleft = otherobj.x;
-                var otherright = otherobj.x + (otherobj.width);
-                var othertop = otherobj.y;
-                var otherbottom = otherobj.y + (otherobj.height);
-                var crash = true;
-                if ((this.bottom < othertop) || (this.top > otherbottom) || (this.right < otherleft) || (this.left > otherright)) {
-                    crash = false;
-                }
-                if (crash == true) {
 
-                    this.crashedWith = otherobj;
-                    score += this.power;
-
-                }
-                return crash;
+            this.left = this.x - this.radius;
+            this.right = this.x + this.radius;
+            this.top = this.y - this.radius;
+            this.bottom = this.y + this.radius;
+            var otherleft = otherobj.x;
+            var otherright = otherobj.x + (otherobj.width);
+            var othertop = otherobj.y;
+            var otherbottom = otherobj.y + (otherobj.height);
+            var crash = true;
+            if ((this.bottom < othertop) || (this.top > otherbottom) || (this.right < otherleft) || (this.left > otherright)) {
+                crash = false;
             }
+            if (crash == true) {
+
+
+                score += this.power;
+
+            }
+            return crash;
+
         };
         this.setVelocity = function(x, y){
             this.velX = x;
@@ -524,14 +524,16 @@
                 if(this.crashWith(blocks[b])){
                     var dx = 0;
                     var dy = 0;
+
                     while(this.crashWith(blocks[b])){
-                        this.x -= this.velX;
-                        this.y -= this.velY;
+                        //console.log(b + " " + this);
+                        this.x -= this.velX/10;
+                        this.y -= this.velY/10;
                     }
                     nearestX = Math.max(blocks[b].x, Math.min(this.x, blocks[b].x + blockSize));
                     nearestY = Math.max(blocks[b].y, Math.min(this.y, blocks[b].y + blockSize));
-                    dx = (this.x - nearestX)/100;
-                    dy = (this.y - nearestY)/100;
+                    dx = (this.x - nearestX)/50;
+                    dy = (this.y - nearestY)/50;
 
 
 
@@ -542,6 +544,7 @@
                         this.velY += dy;
                         this.velX += dx;
                     }
+
                     if(Math.abs(this.velY) < ballSpeed * 0.0871557){
                         this.velY = ballSpeed * 0.0871557 * Math.sign(this.velY);
                         this.velX = ballSpeed * 0.9961947 * Math.sign(this.velX);
@@ -573,7 +576,7 @@
 
                 this.crashedWith = null;
             }
-            if(Math.pow(startPosX - this.x, 2) + Math.pow(startPosY - this.y, 2) < 4){
+            if(Math.pow(startPosX - this.x, 2) + Math.pow(startPosY - this.y, 2) < 8){
                 this.x = startPosX;
                 this.y = startPosY;
             }
